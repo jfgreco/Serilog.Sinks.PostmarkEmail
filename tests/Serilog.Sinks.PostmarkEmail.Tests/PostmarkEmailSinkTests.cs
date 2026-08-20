@@ -482,16 +482,52 @@ namespace Serilog.Sinks.PostmarkEmail.Tests
                 .CreateLogger();
 
             logger.Information("ignored, below the minimum level");
-            logger.Warning("first");
-            logger.Error("second");
+            logger.Error("the only event that reaches the sink");
 
-            // Disposing the logger disposes the BatchingSink, which flushes and then disposes
-            // the batched sink underneath it.
+            // Disposing the logger disposes the BatchingSink, which flushes and then disposes the
+            // batched sink underneath it. Exactly one event reaches the sink, and one event cannot
+            // be split, so this holds no matter how the batching worker is scheduled.
             logger.Dispose();
 
             var body = JsonDocument.Parse(Assert.Single(handler.Bodies)).RootElement;
-            Assert.Equal("first|second|", body.GetProperty("TextBody").GetString());
-            Assert.Equal("[Error] second", body.GetProperty("Subject").GetString());
+            Assert.Equal("the only event that reaches the sink|", body.GetProperty("TextBody").GetString());
+            Assert.Equal("[Error] the only event that reaches the sink", body.GetProperty("Subject").GetString());
+        }
+
+        [Fact]
+        public void DeliversEveryBufferedEventOnDisposeHoweverTheSchedulerGroupsThem()
+        {
+            using var handler = new StubHttpMessageHandler();
+
+            var logger = new LoggerConfiguration()
+                .WriteTo.PostmarkEmail(
+                    new PostmarkEmailSinkOptions
+                    {
+                        ServerToken = "token",
+                        From = "logs@example.com",
+                        To = "ops@example.com",
+                        OutputTemplate = "{Message}|",
+                        MessageHandler = handler,
+                        BufferingTimeLimit = TimeSpan.FromMinutes(5)
+                    },
+                    restrictedToMinimumLevel: LogEventLevel.Warning)
+                .CreateLogger();
+
+            logger.Information("ignored, below the minimum level");
+            logger.Warning("first");
+            logger.Error("second");
+            logger.Dispose();
+
+            // How many emails these two events land in is Serilog's scheduling decision, not a
+            // contract of this sink: the batching worker can drain the queue between the two Write
+            // calls, producing two batches. Asserting a single request here made this test fail
+            // roughly a third of the time. Assert what the sink actually guarantees instead --
+            // every event delivered, in order, with sub-minimum-level events filtered out.
+            var delivered = string.Concat(handler.Bodies.Select(
+                b => JsonDocument.Parse(b).RootElement.GetProperty("TextBody").GetString()));
+
+            Assert.NotEmpty(handler.Bodies);
+            Assert.Equal("first|second|", delivered);
         }
 
         [Fact]

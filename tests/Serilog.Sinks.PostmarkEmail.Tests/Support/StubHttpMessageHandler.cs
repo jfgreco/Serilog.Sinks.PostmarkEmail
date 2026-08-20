@@ -22,11 +22,23 @@ namespace Serilog.Sinks.PostmarkEmail.Tests.Support
             _responder = responder ?? (_ => Ok());
         }
 
+        // A sink driven through a real Logger is called from the batching worker thread while the
+        // test thread reads these, so both sides go through the lock and readers get a snapshot.
+        readonly object _sync = new();
+        readonly List<HttpRequestMessage> _requests = new();
+        readonly List<string> _bodies = new();
+
         /// <summary>Requests seen, in order. Their content is already consumed; use <see cref="Bodies"/>.</summary>
-        public List<HttpRequestMessage> Requests { get; } = new();
+        public IReadOnlyList<HttpRequestMessage> Requests
+        {
+            get { lock (_sync) return _requests.ToArray(); }
+        }
 
         /// <summary>Request bodies, index-aligned with <see cref="Requests"/>.</summary>
-        public List<string> Bodies { get; } = new();
+        public IReadOnlyList<string> Bodies
+        {
+            get { lock (_sync) return _bodies.ToArray(); }
+        }
 
         /// <summary>Whether this handler was disposed. The sink must never dispose a caller-supplied handler.</summary>
         public bool Disposed { get; private set; }
@@ -37,10 +49,15 @@ namespace Serilog.Sinks.PostmarkEmail.Tests.Support
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Requests.Add(request);
+            // Content is disposed once the request completes, so read it now. This has to happen
+            // outside the lock, since await inside a lock is not allowed.
+            var body = request.Content == null ? string.Empty : await request.Content.ReadAsStringAsync();
 
-            // Content is disposed once the request completes, so read it now.
-            Bodies.Add(request.Content == null ? string.Empty : await request.Content.ReadAsStringAsync());
+            lock (_sync)
+            {
+                _requests.Add(request);
+                _bodies.Add(body);
+            }
 
             return _responder(request);
         }
