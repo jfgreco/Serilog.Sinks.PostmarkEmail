@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, without the leading v (for example 1.0.0)'
+        required: true
+
+permissions:
+  contents: write # to create the GitHub release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # Publishing to NuGet cannot be undone: a version number is burned permanently and can only
+    # be unlisted, never replaced or re-pushed with different content. Adding required reviewers
+    # to this environment in repository settings puts a manual approval in front of the push.
+    environment: nuget
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SourceLink embeds commit details, so it needs real history
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # The tag is the single source of truth for the published version; it overrides
+      # VersionPrefix in the csproj.
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$VERSION' is not a valid semantic version."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $VERSION"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+
+      # A red suite must never reach nuget.org, where the version cannot be taken back.
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Pack
+        run: >
+          dotnet pack src/Serilog.Sinks.PostmarkEmail/Serilog.Sinks.PostmarkEmail.csproj
+          -c Release --no-build -o ./artifacts
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:ContinuousIntegrationBuild=true
+
+      - name: Verify the package carries the expected version
+        run: |
+          EXPECTED="artifacts/Serilog.Sinks.PostmarkEmail.${{ steps.version.outputs.version }}.nupkg"
+          if [ ! -f "$EXPECTED" ]; then
+            echo "::error::Expected $EXPECTED but pack produced:"
+            ls -1 artifacts/
+            exit 1
+          fi
+
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::The NUGET_API_KEY repository secret is not set."
+            exit 1
+          fi
+          # --skip-duplicate keeps a re-run from hard-failing on an already-published version.
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          dotnet nuget push "artifacts/*.snupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      # gh is preinstalled on GitHub runners, so this needs no third-party action.
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            artifacts/*.nupkg artifacts/*.snupkg

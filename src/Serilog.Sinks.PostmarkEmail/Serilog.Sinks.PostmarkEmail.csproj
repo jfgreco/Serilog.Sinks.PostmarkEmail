@@ -13,6 +13,8 @@
 
   <PropertyGroup>
     <PackageId>Serilog.Sinks.PostmarkEmail</PackageId>
+    <!-- Local/CI builds use this. A release build overrides it with -p:Version from the git tag,
+         which is the source of truth for anything published to NuGet. -->
     <VersionPrefix>1.0.0</VersionPrefix>
     <Title>Serilog Postmark Email Sink</Title>
     <Authors>jfgreco</Authors>

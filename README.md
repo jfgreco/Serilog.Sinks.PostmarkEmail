@@ -161,6 +161,24 @@ dotnet pack -c Release
 `dotnet test` runs on Microsoft.Testing.Platform, which `global.json` opts into. Note that MTP mode
 does not accept `--nologo`.
 
+## Releasing
+
+The git tag is the source of truth for the published version; it overrides `VersionPrefix` in the
+csproj. Publishing is therefore:
+
+```
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+That runs `.github/workflows/release.yml`, which builds, **runs the tests**, packs with
+`ContinuousIntegrationBuild=true`, pushes the `.nupkg` and `.snupkg` to nuget.org, and opens a
+GitHub release with both attached. It needs a `NUGET_API_KEY` repository secret.
+
+Publishing is not reversible — a version number on nuget.org is permanent and can only be unlisted,
+never replaced. The workflow runs in a `nuget` GitHub environment, so adding required reviewers to
+that environment in repository settings puts a manual approval in front of the push.
+
 ## License
 
 MIT
