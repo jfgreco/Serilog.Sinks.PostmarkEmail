@@ -51,6 +51,8 @@ it directly:
           "tag": "app-errors",
           "batchSizeLimit": 50,
           "bufferingTimeLimit": "00:01:00",
+          "retryTimeLimit": "00:02:00",
+          "httpTimeout": "00:00:30",
           "restrictedToMinimumLevel": "Error"
         }
       }
@@ -106,9 +108,11 @@ Log.Logger = new LoggerConfiguration()
 | `QueueLimit` | `10000` | Events buffered before new ones are dropped. `null` for unbounded. |
 | `EagerlyEmitFirstEvent` | `false` | Serilog's own default is `true`; sending one email for the very first event defeats the point of batching log mail. |
 | `RetryTimeLimit` | `null` | Serilog's default of ten minutes. |
-| `HttpClient` / `MessageHandler` | `null` | Mutually exclusive. See below. |
-| `ServerUrl` | `https://api.postmarkapp.com/` | Override for proxies and tests. |
+| `HttpClient` / `MessageHandler` | `null` | Mutually exclusive, code-only. See below. |
+| `ServerUrl` | `https://api.postmarkapp.com/` | Override for proxies and tests. Must be an absolute URI. |
 | `HttpTimeout` | `30s` | Applies only to a sink-owned client. |
+
+Everything above except `HttpClient` and `MessageHandler` is reachable from `appsettings.json`.
 
 ## Behavior worth knowing
 

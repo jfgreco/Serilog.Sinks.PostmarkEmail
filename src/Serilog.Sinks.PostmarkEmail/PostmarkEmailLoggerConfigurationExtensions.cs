@@ -79,6 +79,9 @@ namespace Serilog
         /// <param name="queueLimit">Events buffered in memory before new ones are dropped.</param>
         /// <param name="eagerlyEmitFirstEvent">Send the first event immediately instead of waiting for a batch.</param>
         /// <param name="formatProvider">Supplies culture-specific formatting for the subject and body.</param>
+        /// <param name="serverUrl">Overrides the Postmark API base address, for proxies and testing. Must be an absolute URI.</param>
+        /// <param name="httpTimeout">Timeout for each API call. Defaults to 30 seconds.</param>
+        /// <param name="retryTimeLimit">How long failed batches keep being retried. Defaults to Serilog's ten minutes; lower it to reduce buffering under load.</param>
         /// <returns>Logger configuration, allowing configuration to continue.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="loggerSinkConfiguration"/> is null.</exception>
         /// <exception cref="ArgumentException">A required argument is missing or invalid.</exception>
@@ -102,12 +105,18 @@ namespace Serilog
             TimeSpan? bufferingTimeLimit = null,
             int queueLimit = PostmarkEmailSinkOptions.DefaultQueueLimit,
             bool eagerlyEmitFirstEvent = false,
-            IFormatProvider? formatProvider = null)
+            IFormatProvider? formatProvider = null,
+            // Appended rather than grouped with the related parameters above, so that existing
+            // positional callers keep compiling. Note that adding a parameter at all is a binary
+            // breaking change: callers must be recompiled, not merely re-referenced.
+            string? serverUrl = null,
+            TimeSpan? httpTimeout = null,
+            TimeSpan? retryTimeLimit = null)
         {
             var options = BuildOptions(
                 serverToken, from, to, cc, bcc, replyTo, subject, outputTemplate, isBodyHtml,
                 tag, messageStream, trackOpens, batchSizeLimit, bufferingTimeLimit, queueLimit,
-                eagerlyEmitFirstEvent, formatProvider);
+                eagerlyEmitFirstEvent, formatProvider, serverUrl, httpTimeout, retryTimeLimit);
 
             return loggerSinkConfiguration.PostmarkEmail(options, restrictedToMinimumLevel, levelSwitch);
         }
@@ -133,10 +142,26 @@ namespace Serilog
             TimeSpan? bufferingTimeLimit,
             int queueLimit,
             bool eagerlyEmitFirstEvent,
-            IFormatProvider? formatProvider)
+            IFormatProvider? formatProvider,
+            string? serverUrl = null,
+            TimeSpan? httpTimeout = null,
+            TimeSpan? retryTimeLimit = null)
         {
+            // Taken as a string rather than a Uri so that appsettings.json can supply it, and
+            // parsed here so a typo fails at startup with a message naming the parameter.
+            Uri? parsedServerUrl = null;
+            if (serverUrl != null && serverUrl.Trim().Length != 0 &&
+                !Uri.TryCreate(serverUrl, UriKind.Absolute, out parsedServerUrl))
+            {
+                throw new ArgumentException(
+                    $"'{serverUrl}' is not an absolute URI.", nameof(serverUrl));
+            }
+
             return new PostmarkEmailSinkOptions
             {
+                ServerUrl = parsedServerUrl,
+                HttpTimeout = httpTimeout ?? PostmarkEmailSinkOptions.DefaultHttpTimeout,
+                RetryTimeLimit = retryTimeLimit,
                 ServerToken = serverToken,
                 From = from,
                 To = to,

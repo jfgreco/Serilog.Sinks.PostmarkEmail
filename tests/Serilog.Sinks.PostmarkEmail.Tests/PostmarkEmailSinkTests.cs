@@ -552,7 +552,10 @@ namespace Serilog.Sinks.PostmarkEmail.Tests
                 bufferingTimeLimit: TimeSpan.FromMinutes(3),
                 queueLimit: 11,
                 eagerlyEmitFirstEvent: true,
-                formatProvider: culture);
+                formatProvider: culture,
+                serverUrl: "https://proxy.internal/postmark/",
+                httpTimeout: TimeSpan.FromSeconds(13),
+                retryTimeLimit: TimeSpan.FromMinutes(2));
 
             Assert.Equal("the-token", options.ServerToken);
             Assert.Equal("from@x.com", options.From);
@@ -571,6 +574,78 @@ namespace Serilog.Sinks.PostmarkEmail.Tests
             Assert.Equal(11, options.QueueLimit);
             Assert.True(options.EagerlyEmitFirstEvent);
             Assert.Same(culture, options.FormatProvider);
+            Assert.Equal(new Uri("https://proxy.internal/postmark/"), options.ServerUrl);
+            Assert.Equal(TimeSpan.FromSeconds(13), options.HttpTimeout);
+            Assert.Equal(TimeSpan.FromMinutes(2), options.RetryTimeLimit);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void FlatOverloadLeavesServerUrlUnsetSoTheDefaultEndpointApplies(string? serverUrl)
+        {
+            var options = PostmarkEmailLoggerConfigurationExtensions.BuildOptions(
+                "token", "from@x.com", "to@x.com", null, null, null,
+                PostmarkEmailSinkOptions.DefaultSubject, PostmarkEmailSinkOptions.DefaultOutputTemplate,
+                false, null, null, null, PostmarkEmailSinkOptions.DefaultBatchSizeLimit,
+                null, PostmarkEmailSinkOptions.DefaultQueueLimit, false, null,
+                serverUrl: serverUrl);
+
+            Assert.Null(options.ServerUrl);
+        }
+
+        [Theory]
+        [InlineData("not a uri")]
+        [InlineData("/relative/path")]
+        [InlineData("api.postmarkapp.com")]
+        public void FlatOverloadRejectsAServerUrlThatIsNotAbsolute(string serverUrl)
+        {
+            var ex = Assert.Throws<ArgumentException>(() =>
+                PostmarkEmailLoggerConfigurationExtensions.BuildOptions(
+                    "token", "from@x.com", "to@x.com", null, null, null,
+                    PostmarkEmailSinkOptions.DefaultSubject, PostmarkEmailSinkOptions.DefaultOutputTemplate,
+                    false, null, null, null, PostmarkEmailSinkOptions.DefaultBatchSizeLimit,
+                    null, PostmarkEmailSinkOptions.DefaultQueueLimit, false, null,
+                    serverUrl: serverUrl));
+
+            Assert.Equal("serverUrl", ex.ParamName);
+        }
+
+        [Fact]
+        public void FlatOverloadFallsBackToTheDefaultHttpTimeout()
+        {
+            var options = PostmarkEmailLoggerConfigurationExtensions.BuildOptions(
+                "token", "from@x.com", "to@x.com", null, null, null,
+                PostmarkEmailSinkOptions.DefaultSubject, PostmarkEmailSinkOptions.DefaultOutputTemplate,
+                false, null, null, null, PostmarkEmailSinkOptions.DefaultBatchSizeLimit,
+                null, PostmarkEmailSinkOptions.DefaultQueueLimit, false, null);
+
+            Assert.Equal(PostmarkEmailSinkOptions.DefaultHttpTimeout, options.HttpTimeout);
+            Assert.Null(options.RetryTimeLimit); // null means Serilog's own default
+        }
+
+        [Fact]
+        public async Task ServerUrlFromTheFlatOverloadReachesTheSink()
+        {
+            // The whole point of exposing serverUrl on the flat overload is that an
+            // appsettings.json-configured sink can be pointed somewhere other than Postmark.
+            using var handler = new StubHttpMessageHandler();
+
+            var options = PostmarkEmailLoggerConfigurationExtensions.BuildOptions(
+                "token", "from@x.com", "to@x.com", null, null, null,
+                PostmarkEmailSinkOptions.DefaultSubject, "{Message}",
+                false, null, null, null, PostmarkEmailSinkOptions.DefaultBatchSizeLimit,
+                null, PostmarkEmailSinkOptions.DefaultQueueLimit, false, null,
+                serverUrl: "https://proxy.internal/postmark/");
+
+            options.MessageHandler = handler;
+            options.Validate("options");
+
+            using var sink = new PostmarkEmailSink(options);
+            await sink.EmitBatchAsync(Some.Batch(Some.LogEvent()));
+
+            Assert.Equal("https://proxy.internal/postmark/email", handler.SingleRequest.RequestUri!.ToString());
         }
 
         [Fact]
