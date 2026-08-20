@@ -53,6 +53,38 @@ If you need multi-event coverage through a real `Logger`, assert on the concaten
 rather than on how many requests happened. See
 `DeliversEveryBufferedEventOnDisposeHoweverTheSchedulerGroupsThem`.
 
+### Three layers of test
+
+| Layer | What it proves | Where |
+| --- | --- | --- |
+| Stubbed handler | Request shape, subject rendering, error classification | most of the suite |
+| Loopback server | The request survives a real socket: HTTP framing, headers as `HttpClient` serializes them, `HttpTimeout` | `LoopbackTransportTests` |
+| Live Postmark | That Postmark accepts these field names and delivers the message | `LivePostmarkTests`, opt-in |
+
+### The live Postmark test
+
+`LivePostmarkTests` is the only thing that talks to the real API, and **it sends real email**. It
+skips itself unless you configure a token, so CI and a fresh clone never run it.
+
+Configuring a token is the opt-in. Secrets go in .NET user secrets, which live in your user profile
+rather than the working tree — there is no file to forget to gitignore:
+
+```
+cd tests/Serilog.Sinks.PostmarkEmail.Tests
+dotnet user-secrets set "Postmark:ServerToken" "your-server-token"
+dotnet user-secrets set "Postmark:From"        "logs@yourdomain.com"
+dotnet user-secrets set "Postmark:To"          "you@yourdomain.com"
+```
+
+Environment variables work too: `POSTMARK__SERVERTOKEN`, `POSTMARK__FROM`, `POSTMARK__TO`.
+
+`From` must be a verified Postmark sender signature or on a confirmed domain, and the token must be
+a **server** token — an account token cannot send. To stop testing, `dotnet user-secrets clear`.
+
+The two tests are a matched pair: one sends a real message and asserts `SelfLog` stayed silent,
+the other deliberately uses a bad token to confirm the sink treats a genuine Postmark 401 as
+permanent — reported once and dropped, rather than retried for ten minutes.
+
 ### Reproducing a Linux-only failure
 
 CI runs on Linux. If something passes locally on Windows but fails in CI, reproduce it in a

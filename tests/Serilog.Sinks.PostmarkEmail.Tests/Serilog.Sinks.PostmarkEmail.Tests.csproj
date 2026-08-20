@@ -16,8 +16,17 @@
          needed for it. -->
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Lets `dotnet user-secrets` store a real Postmark token for the opt-in live test. Secrets
+         live in the user profile, never in the repo, so a token cannot be committed by accident. -->
+    <UserSecretsId>8f3a1c92-5d47-4b6e-9a10-2c7e4f8b1d63</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>

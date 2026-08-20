@@ -165,6 +165,10 @@ dotnet pack -c Release
 `dotnet test` runs on Microsoft.Testing.Platform, which `global.json` opts into. Note that MTP mode
 does not accept `--nologo`.
 
+Two of the tests talk to the real Postmark API and send real email. They skip themselves unless you
+configure a server token locally, so a plain `dotnet test` never sends anything. See
+[CONTRIBUTING.md](.github/CONTRIBUTING.md#the-live-postmark-test) to enable them.
+
 ## Releasing
 
 The git tag is the source of truth for the published version; it overrides `VersionPrefix` in the
