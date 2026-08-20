@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/jfgreco/Serilog.Sinks.PostmarkEmail/security/advisories/new
+    about: Report privately through a draft security advisory. Please do not open a public issue.
+  - name: Postmark API or account question
+    url: https://postmarkapp.com/support
+    about: Sender signatures, message streams, blocked recipients and account state are Postmark's, not this sink's.
+  - name: Serilog usage question
+    url: https://github.com/serilog/serilog/discussions
+    about: Enrichers, output templates, minimum levels and general Serilog configuration.

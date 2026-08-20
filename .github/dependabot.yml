@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Test tooling moves together and is not shipped to consumers, so one PR is plenty.
+      test-tooling:
+        patterns:
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+    ignore:
+      # Bumping this would raise the floor for every netstandard2.0 consumer, which is the
+      # target most likely to be on an older runtime. Worth a deliberate decision, not a bot PR.
+      - dependency-name: "System.Text.Json"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

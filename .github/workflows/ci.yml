@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           # net8.0 is a target framework of both the library and the test project, so its
           # runtime is needed to actually run those tests.
@@ -38,7 +38,7 @@ jobs:
         run: dotnet pack src/Serilog.Sinks.PostmarkEmail/Serilog.Sinks.PostmarkEmail.csproj --configuration Release --no-build --output ./artifacts -p:ContinuousIntegrationBuild=true
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nupkg
           path: ./artifacts/*.*nupkg

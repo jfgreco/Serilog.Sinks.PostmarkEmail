@@ -194,6 +194,32 @@ Publishing is not reversible — a version number on nuget.org is permanent and 
 never replaced. The workflow runs in a `nuget` GitHub environment, so adding required reviewers to
 that environment in repository settings puts a manual approval in front of the push.
 
+### Release checklist
+
+1. `master` is green and `dotnet test` passes locally.
+2. Decide the version. Breaking changes to `PostmarkEmailSinkOptions` or the
+   `WriteTo.PostmarkEmail` signatures need a major bump; a published version cannot be re-cut.
+3. Tag and push. The tag drives the version — there is nothing to edit in the csproj.
+4. Watch the run. Everything before `Push to NuGet` is a gate: build, the full test suite, pack,
+   and a check that the packed filename matches the tag. A failure in any of them publishes
+   nothing, so the tag can safely be moved and re-pushed.
+5. Once `Push to NuGet` has succeeded the version is spent. From that point a mistake means
+   publishing a new version, not re-tagging.
+6. nuget.org takes roughly five minutes to index a new version. A 404 immediately after a
+   successful push is normal.
+
+### One-time setup
+
+Already done for this repository; recorded here in case it needs rebuilding.
+
+- A trusted publishing policy on nuget.org with the fields in the table above, and a glob pattern
+  of `Serilog.Sinks.PostmarkEmail` under package scoping. A package that does not exist yet cannot
+  be picked from the list, so the glob field is the only way to scope the first release.
+- A `NUGET_USER` repository secret holding the nuget.org profile name, not the email address.
+- The `nuget` GitHub environment. The name is load-bearing twice over: it gates the push behind
+  optional required reviewers, and it travels as a claim in the OIDC token that nuget.org
+  validates against the policy. Renaming it means updating the policy too.
+
 ## License
 
 MIT

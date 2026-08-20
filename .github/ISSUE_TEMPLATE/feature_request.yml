@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest a capability for the sink
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This sink deliberately stays small: it renders a batch of log events into one email and
+        posts it to Postmark, with no dependency beyond Serilog. Proposals that keep it that way
+        are the easiest to accept.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you hitting
+      description: Describe the situation, not the solution. What are you unable to do today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: How you are handling it now, if at all.
+
+  - type: dropdown
+    id: api-impact
+    attributes:
+      label: Would this change the public API?
+      options:
+        - "No"
+        - "Additive only (a new optional option or parameter)"
+        - "Breaking"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: deps
+    attributes:
+      label: Dependencies
+      options:
+        - label: This can be done without adding a package reference to the library

@@ -1,0 +1,85 @@
+name: Bug report
+description: Something in the sink does not behave as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: **turn on `SelfLog`**. Every delivery problem this sink knows about is
+        reported there and nowhere else, so without it a failed send looks like silence.
+
+        ```csharp
+        Serilog.Debugging.SelfLog.Enable(Console.Error);
+        ```
+
+        Please do not paste your Postmark server token anywhere in this issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: selflog
+    attributes:
+      label: SelfLog output
+      description: >
+        Output from SelfLog while reproducing. Redact the token if it somehow appears —
+        and if it does appear, please report that privately instead, per SECURITY.md.
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Sink configuration
+      description: Your WriteTo.PostmarkEmail call or appsettings.json section, with the token removed.
+      render: csharp
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Sink version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tfm
+    attributes:
+      label: Target framework
+      options:
+        - net10.0
+        - net8.0
+        - netstandard2.0 (.NET Framework)
+        - netstandard2.0 (other)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: serilog-version
+    attributes:
+      label: Serilog version
+      placeholder: "4.4.0"
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Postmark message stream, unusual recipient formats, a proxy in front of the API, and so on.
