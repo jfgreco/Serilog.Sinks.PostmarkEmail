@@ -9,16 +9,20 @@ on:
         description: 'Version to publish, without the leading v (for example 1.0.0)'
         required: true
 
-permissions:
-  contents: write # to create the GitHub release
-
 jobs:
   release:
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write # mint the OIDC token that nuget.org trades for a short-lived API key
+      contents: write # create the GitHub release
+
     # Publishing to NuGet cannot be undone: a version number is burned permanently and can only
     # be unlisted, never replaced or re-pushed with different content. Adding required reviewers
     # to this environment in repository settings puts a manual approval in front of the push.
+    #
+    # This name must also match the Environment field of the nuget.org trusted publishing policy:
+    # the environment travels as a claim in the OIDC token and is validated against the policy.
     environment: nuget
 
     steps:
@@ -76,14 +80,23 @@ jobs:
             exit 1
           fi
 
+      # Trusted publishing: no stored API key. This exchanges the job's OIDC token for a
+      # temporary nuget.org key that lasts one hour and can be redeemed exactly once, so it
+      # runs immediately before the push rather than at the top of the job.
+      #
+      # NUGET_USER is the nuget.org account name (the profile name, NOT the email address).
+      # It is not a credential; it lives in secrets only to keep the account name out of
+      # public build logs.
+      - name: Exchange OIDC token for a short-lived NuGet key
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Push to NuGet
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
-          if [ -z "$NUGET_API_KEY" ]; then
-            echo "::error::The NUGET_API_KEY repository secret is not set."
-            exit 1
-          fi
           # --skip-duplicate keeps a re-run from hard-failing on an already-published version.
           dotnet nuget push "artifacts/*.nupkg" \
             --api-key "$NUGET_API_KEY" \

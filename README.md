@@ -173,7 +173,22 @@ git push origin v1.0.0
 
 That runs `.github/workflows/release.yml`, which builds, **runs the tests**, packs with
 `ContinuousIntegrationBuild=true`, pushes the `.nupkg` and `.snupkg` to nuget.org, and opens a
-GitHub release with both attached. It needs a `NUGET_API_KEY` repository secret.
+GitHub release with both attached.
+
+Authentication uses [trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing):
+no long-lived API key is stored anywhere. The job mints a GitHub OIDC token, `NuGet/login@v1` trades
+it with nuget.org for a temporary key valid for one hour and redeemable once, and that key is used
+for the push. Setup is a one-time trusted publishing policy on nuget.org:
+
+| Policy field | Value |
+| --- | --- |
+| Repository Owner | `jfgreco` |
+| Repository | `Serilog.Sinks.PostmarkEmail` |
+| Workflow File | `release.yml` (filename only, no path) |
+| Environment | `nuget` |
+
+The only repository secret is `NUGET_USER`, the nuget.org account name. That is not a credential —
+it is a secret purely to keep the account name out of public build logs.
 
 Publishing is not reversible — a version number on nuget.org is permanent and can only be unlisted,
 never replaced. The workflow runs in a `nuget` GitHub environment, so adding required reviewers to
