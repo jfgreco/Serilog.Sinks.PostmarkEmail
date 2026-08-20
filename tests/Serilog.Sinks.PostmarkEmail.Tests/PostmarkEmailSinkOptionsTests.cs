@@ -101,6 +101,27 @@ namespace Serilog.Sinks.PostmarkEmail.Tests
         }
 
         [Fact]
+        public void ServerUrlMustBeHttpOrHttps()
+        {
+            var options = Valid();
+            options.ServerUrl = new Uri("file:///tmp/postmark");
+
+            var ex = Assert.Throws<ArgumentException>(() => options.Validate("options"));
+            Assert.Contains(nameof(PostmarkEmailSinkOptions.ServerUrl), ex.Message);
+        }
+
+        [Theory]
+        [InlineData("http://localhost:8080/")]
+        [InlineData("https://proxy.internal/postmark/")]
+        public void ServerUrlAcceptsHttpAndHttps(string url)
+        {
+            var options = Valid();
+            options.ServerUrl = new Uri(url);
+
+            options.Validate("options");
+        }
+
+        [Fact]
         public void HttpClientAndMessageHandlerAreMutuallyExclusive()
         {
             using var handler = new StubHttpMessageHandler();

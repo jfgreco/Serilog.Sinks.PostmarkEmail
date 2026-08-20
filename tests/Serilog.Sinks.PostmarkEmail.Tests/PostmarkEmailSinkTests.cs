@@ -597,9 +597,13 @@ namespace Serilog.Sinks.PostmarkEmail.Tests
 
         [Theory]
         [InlineData("not a uri")]
-        [InlineData("/relative/path")]
         [InlineData("api.postmarkapp.com")]
-        public void FlatOverloadRejectsAServerUrlThatIsNotAbsolute(string serverUrl)
+        // On Unix these parse as absolute file:// URIs, so checking UriKind.Absolute alone would
+        // accept them on Linux and reject them on Windows. The scheme check makes it consistent.
+        [InlineData("/relative/path")]
+        [InlineData("file:///tmp/postmark")]
+        [InlineData("ftp://example.com/")]
+        public void FlatOverloadRejectsAServerUrlThatIsNotHttp(string serverUrl)
         {
             var ex = Assert.Throws<ArgumentException>(() =>
                 PostmarkEmailLoggerConfigurationExtensions.BuildOptions(

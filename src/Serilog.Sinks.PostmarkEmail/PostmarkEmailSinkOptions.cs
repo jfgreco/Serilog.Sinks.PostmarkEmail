@@ -210,6 +210,13 @@ namespace Serilog.Sinks.PostmarkEmail
             if (HttpTimeout <= TimeSpan.Zero)
                 throw Invalid(nameof(HttpTimeout), "must be greater than zero", paramName);
 
+            if (ServerUrl != null &&
+                (!ServerUrl.IsAbsoluteUri ||
+                 (ServerUrl.Scheme != Uri.UriSchemeHttp && ServerUrl.Scheme != Uri.UriSchemeHttps)))
+            {
+                throw Invalid(nameof(ServerUrl), "must be an absolute http or https URI", paramName);
+            }
+
             if (HttpClient != null && MessageHandler != null)
                 throw new ArgumentException(
                     $"{nameof(PostmarkEmailSinkOptions)}.{nameof(HttpClient)} and " +

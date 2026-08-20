@@ -149,12 +149,19 @@ namespace Serilog
         {
             // Taken as a string rather than a Uri so that appsettings.json can supply it, and
             // parsed here so a typo fails at startup with a message naming the parameter.
+            //
+            // The scheme is checked, not merely UriKind.Absolute. On Unix a leading-slash path
+            // such as "/postmark" parses as the absolute URI "file:///postmark", so an absoluteness
+            // check alone accepts a misconfiguration on Linux that it rejects on Windows.
             Uri? parsedServerUrl = null;
-            if (serverUrl != null && serverUrl.Trim().Length != 0 &&
-                !Uri.TryCreate(serverUrl, UriKind.Absolute, out parsedServerUrl))
+            if (serverUrl != null && serverUrl.Trim().Length != 0)
             {
-                throw new ArgumentException(
-                    $"'{serverUrl}' is not an absolute URI.", nameof(serverUrl));
+                if (!Uri.TryCreate(serverUrl, UriKind.Absolute, out parsedServerUrl) ||
+                    (parsedServerUrl.Scheme != Uri.UriSchemeHttp && parsedServerUrl.Scheme != Uri.UriSchemeHttps))
+                {
+                    throw new ArgumentException(
+                        $"'{serverUrl}' is not an absolute http or https URI.", nameof(serverUrl));
+                }
             }
 
             return new PostmarkEmailSinkOptions
