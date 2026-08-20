@@ -137,12 +137,7 @@ namespace Serilog.Sinks.PostmarkEmail
         /// <summary>
         /// Nothing to do on an empty batch; the sink holds no state between sends.
         /// </summary>
-        public Task OnEmptyBatchAsync() =>
-#if NET8_0_OR_GREATER
-            Task.CompletedTask;
-#else
-            Task.FromResult(false);
-#endif
+        public Task OnEmptyBatchAsync() => Task.CompletedTask;
 
         /// <summary>
         /// Disposes the client if the sink created it. A borrowed client is left alone.
