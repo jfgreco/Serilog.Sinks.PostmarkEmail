@@ -26,6 +26,17 @@ jobs:
     environment: nuget
 
     steps:
+      # Checked first so a missing secret fails in seconds, rather than after a full build and
+      # test run, only to die at the token exchange with "Input required and not supplied: user".
+      - name: Check NUGET_USER is configured
+        env:
+          NUGET_USER: ${{ secrets.NUGET_USER }}
+        run: |
+          if [ -z "$NUGET_USER" ]; then
+            echo "::error::The NUGET_USER repository secret is not set. It must be your nuget.org profile name, not your email address. Set it under Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # SourceLink embeds commit details, so it needs real history
