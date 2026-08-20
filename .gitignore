@@ -1,0 +1,14 @@
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+*.binlog
+.vs/
+.vscode/
+.idea/
+*.nupkg
+*.snupkg
+TestResults/

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Serilog.Sinks.PostmarkEmail/Serilog.Sinks.PostmarkEmail.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Serilog.Sinks.PostmarkEmail.Tests/Serilog.Sinks.PostmarkEmail.Tests.csproj" />
+  </Folder>
+</Solution>

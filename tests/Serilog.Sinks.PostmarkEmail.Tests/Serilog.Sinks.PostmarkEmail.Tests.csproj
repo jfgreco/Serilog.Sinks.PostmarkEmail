@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Multi-targeted so the library's netstandard2.0-compatible code paths are exercised
+         on more than one runtime. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Serilog.Sinks.PostmarkEmail.Tests</AssemblyName>
+    <RootNamespace>Serilog.Sinks.PostmarkEmail.Tests</RootNamespace>
+    <!-- xUnit v3 runs on Microsoft.Testing.Platform. `dotnet test` is switched into MTP mode by
+         the "test" section in global.json, which is the .NET 10 opt-in; no MSBuild property is
+         needed for it. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Serilog.Sinks.PostmarkEmail/Serilog.Sinks.PostmarkEmail.csproj" />
+  </ItemGroup>
+
+</Project>
